@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Dice from "./Dice";
 
 const squares = [
@@ -81,13 +81,6 @@ const properties = {
   "Park Place": { price: 350, rent: 70 }, "Boardwalk": { price: 400, rent: 80 }
 };
 
-const cardDeck = [
-  { type: "Chance", text: "Bank error in your favor. Collect $100.", amount: 100 },
-  { type: "Chance", text: "Advance to GO. Collect $200.", move: 0 },
-  { type: "Community Chest", text: "You inherit $150.", amount: 150 },
-  { type: "Community Chest", text: "Pay school fees of $50.", amount: -50 }
-];
-
 function getSquarePosition(idx) {
   if (idx < 11) return { gridColumn: idx + 1, gridRow: 11 };
   if (idx < 20) return { gridColumn: 11, gridRow: 21 - idx };
@@ -96,104 +89,88 @@ function getSquarePosition(idx) {
 }
 
 function GameBoard() {
-  const [players, setPlayers] = useState([
-    { name: "You", money: 1500, position: 0, color: "#e4572e", properties: [] },
-    { name: "Cleo", money: 1500, position: 0, color: "#167c80", properties: [] }
-  ]);
-  const [currentPlayer, setCurrentPlayer] = useState(0);
-  const [dice, setDice] = useState([1, 1]);
-  const [rolling, setRolling] = useState(false);
-  const [rolledThisTurn, setRolledThisTurn] = useState(false);
-  const [message, setMessage] = useState("Roll the dice to start your turn.");
-  const [pendingPurchase, setPendingPurchase] = useState(null);
-  const [drawnCard, setDrawnCard] = useState(null);
-  const [gameOver, setGameOver] = useState(false);
+  const [roomId, setRoomId] = useState("");
+  const [playerName, setPlayerName] = useState("");
+  const [joined, setJoined] = useState(false);
+  const [connectionState, setConnectionState] = useState("offline");
+  const [players, setPlayers] = useState([]);
+  const [serverState, setServerState] = useState(null);
+  const [error, setError] = useState("");
+  const socketRef = useRef(null);
+  const colors = ["#e4572e", "#167c80", "#d39b2a", "#7654a8", "#b94f83", "#4f78b8"];
 
-  const activePlayer = players[currentPlayer];
-  const currentSquare = squares[activePlayer.position];
-  const ownedBy = (square) => players.findIndex((player) => player.properties.includes(square));
+  const currentPlayer = Math.max(0, players.findIndex((player) => player.name === serverState?.current_turn));
+  const activePlayer = players[currentPlayer] || { name: "Waiting", money: 1500, position: 0, properties: [] };
+  const currentSquare = squares[activePlayer.position] || "GO";
+  const pendingPurchase = serverState?.pending_purchase == null ? null : squares[serverState.pending_purchase];
+  const rolledThisTurn = Boolean(serverState?.turn_rolled);
+  const isMyTurn = serverState?.current_turn === playerName;
+  const ownedBy = (square) => players.findIndex((player) => player.properties.includes(squares.indexOf(square)));
 
-  useEffect(() => {
-    if (players.some((player) => player.money < 0)) {
-      setGameOver(true);
-      setMessage(`${players.find((player) => player.money < 0)?.name} went bankrupt. ${players.find((player) => player.money >= 0)?.name} wins!`);
+  const sendAction = (action) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action, player: playerName }));
     }
-  }, [players]);
-
-  const finishTurn = () => {
-    setCurrentPlayer((player) => (player + 1) % players.length);
-    setRolledThisTurn(false);
-    setPendingPurchase(null);
-    setDrawnCard(null);
-    setMessage(`${currentPlayer === 0 ? "Cleo" : "You"}'s turn. Roll when you're ready.`);
   };
 
-  const resolveLanding = (position) => {
-    const square = squares[position];
-    if (position < activePlayer.position && position !== 0) {
-      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money + 200 } : player));
-      setMessage(`${activePlayer.name} passed GO and collected $200.`);
-    }
-    if (square === "Go To Jail") {
-      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, position: 10 } : player));
-      setMessage(`${activePlayer.name} was sent to jail.`);
-      return;
-    }
-    if (square === "Income Tax" || square === "Luxury Tax") {
-      const tax = square === "Income Tax" ? 200 : 100;
-      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money - tax } : player));
-      setMessage(`${activePlayer.name} paid $${tax} ${square.toLowerCase()}.`);
-      return;
-    }
-    if (chanceIndices.includes(position) || communityIndices.includes(position)) {
-      const card = cardDeck[Math.floor(Math.random() * cardDeck.length)];
-      setDrawnCard(card);
-      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money + (card.amount || 0), position: card.move === 0 ? 0 : player.position } : player));
-      setMessage(`${activePlayer.name} drew a card.`);
-      return;
-    }
-    if (properties[square] && ownedBy(square) === -1) {
-      setPendingPurchase(square);
-      setMessage(`${square} is available for $${properties[square].price}.`);
-      return;
-    }
-    if (properties[square] && ownedBy(square) !== currentPlayer) {
-      const owner = ownedBy(square);
-      const rent = properties[square].rent;
-      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money - rent } : index === owner ? { ...player, money: player.money + rent } : player));
-      setMessage(`${activePlayer.name} paid $${rent} rent to ${players[owner].name}.`);
-      return;
-    }
-    setMessage(`${activePlayer.name} landed on ${square}.`);
+  const joinRoom = (event) => {
+    event.preventDefault();
+    const cleanRoom = roomId.trim().toLowerCase();
+    const cleanName = playerName.trim();
+    if (!cleanRoom || !cleanName) return;
+    setError("");
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const configuredBackend = import.meta.env.VITE_BACKEND_URL;
+    const backendUrl = configuredBackend || `${protocol}://${window.location.hostname}:8000`;
+    const socketUrl = backendUrl.replace(/^http/, protocol);
+    const socket = new WebSocket(`${socketUrl}/ws/${encodeURIComponent(cleanRoom)}`);
+    socketRef.current = socket;
+    socket.onopen = () => {
+      setConnectionState("online");
+      setJoined(true);
+      socket.send(JSON.stringify({ action: "join", player: cleanName }));
+    };
+    socket.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type === "error") {
+        setError(payload.message);
+        return;
+      }
+      if (payload.type === "state" && payload.state) {
+        setServerState(payload.state);
+        setPlayers(payload.state.players.map((player, index) => ({ ...player, color: colors[index % colors.length] })));
+      }
+    };
+    socket.onclose = () => setConnectionState("offline");
+    socket.onerror = () => setError("Could not connect to the game server.");
   };
 
-  const rollDice = () => {
-    if (rolling || rolledThisTurn || gameOver || pendingPurchase) return;
-    setRolledThisTurn(true);
-    setRolling(true);
-    window.setTimeout(() => {
-      const nextDice = [Math.ceil(Math.random() * 6), Math.ceil(Math.random() * 6)];
-      const nextPosition = (activePlayer.position + nextDice[0] + nextDice[1]) % squares.length;
-      setDice(nextDice);
-      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, position: nextPosition } : player));
-      setRolling(false);
-      resolveLanding(nextPosition);
-    }, 650);
+  useEffect(() => () => socketRef.current?.close(), []);
+
+  const resetGame = () => {
+    socketRef.current?.close();
+    setJoined(false);
+    setPlayers([]);
+    setServerState(null);
+    setConnectionState("offline");
   };
 
-  const buyProperty = () => {
-    const property = properties[pendingPurchase];
-    if (!property || activePlayer.money < property.price) return;
-    setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money - property.price, properties: [...player.properties, pendingPurchase] } : player));
-    setMessage(`${activePlayer.name} bought ${pendingPurchase}.`);
-    setPendingPurchase(null);
-  };
+  if (!joined) {
+    return <main className="lobby-shell"><section className="lobby-card"><p className="eyebrow">ONLINE TABLE · UP TO 6 PLAYERS</p><h1>Monopoly <span>After Hours</span></h1><p className="lobby-copy">Open this page in multiple browser tabs, use the same room code, and take the city together.</p><form onSubmit={joinRoom} className="lobby-form"><label>Room code<input value={roomId} onChange={(event) => setRoomId(event.target.value)} placeholder="friday-night" autoComplete="off" /></label><label>Your name<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} placeholder="Alex" autoComplete="nickname" /></label><button className="primary-button" type="submit">Join table</button></form>{error && <p className="connection-error">{error}</p>}<p className="server-hint">Server: {connectionState === "online" ? "online" : "start FastAPI on port 8000"}</p></section></main>;
+  }
 
-  const resetGame = () => window.location.reload();
+  const dice = serverState?.dice || [1, 1];
+  const rolling = false;
+  const gameOver = Boolean(serverState?.game_over);
+  const message = serverState?.message || "Waiting for another player to join.";
+  const drawnCard = serverState?.card;
+  const buyProperty = () => sendAction("buy");
+  const finishTurn = () => sendAction(pendingPurchase ? "pass" : "end_turn");
+  const rollDice = () => { if (isMyTurn && !rolledThisTurn && !pendingPurchase && !gameOver) sendAction("roll"); };
 
   return (
     <main className="game-shell">
-      <header className="topbar"><div><p className="eyebrow">PASS & PLAY · 2 PLAYERS</p><h1>Monopoly <span>After Hours</span></h1></div><button className="quiet-button" onClick={resetGame}>New game</button></header>
+      <header className="topbar"><div><p className="eyebrow">ONLINE TABLE · {players.length}/6 PLAYERS</p><h1>Monopoly <span>After Hours</span></h1></div><button className="quiet-button" onClick={resetGame}>Leave game</button></header>
       <section className="game-layout">
         <aside className="side-panel left-panel"><div className="panel-heading"><span>Players</span><span className="turn-chip">Turn {currentPlayer + 1}</span></div>
           {players.map((player, index) => <div className={`player-card ${currentPlayer === index ? "active-player" : ""}`} key={player.name}><span className="player-token" style={{ background: player.color }}>{index + 1}</span><div><strong>{player.name}</strong><small>{player.properties.length} properties</small></div><b>${player.money}</b></div>)}
@@ -258,7 +235,7 @@ function GameBoard() {
           })}
           <div className="monopoly-center">
             <p className="center-kicker">THE CITY IS YOURS</p><div className="monopoly-title">MONOPOLY</div><div className="center-divider" /><p className="center-status">{message}</p>
-            {drawnCard && <div className="drawn-card"><span>{drawnCard.type}</span>{drawnCard.text}</div>}
+            {drawnCard && <div className="drawn-card"><span>Card</span>{drawnCard.message}</div>}
           </div>
         </div>
         </div>
