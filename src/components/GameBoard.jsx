@@ -97,6 +97,7 @@ function GameBoard() {
   const [serverState, setServerState] = useState(null);
   const [error, setError] = useState("");
   const socketRef = useRef(null);
+  const joinTimeoutRef = useRef(null);
   const colors = ["#e4572e", "#167c80", "#d39b2a", "#7654a8", "#b94f83", "#4f78b8"];
 
   const currentPlayer = Math.max(0, players.findIndex((player) => player.name === serverState?.current_turn));
@@ -119,15 +120,29 @@ function GameBoard() {
     const cleanName = playerName.trim();
     if (!cleanRoom || !cleanName) return;
     setError("");
+    setConnectionState("connecting");
+    setPlayerName(cleanName);
+    setRoomId(cleanRoom);
+    socketRef.current?.close();
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const configuredBackend = import.meta.env.VITE_BACKEND_URL;
+    const configuredBackend = import.meta.env.VITE_BACKEND_URL?.trim();
+    if (!configuredBackend && import.meta.env.PROD) {
+      setError("The deployed app is missing VITE_BACKEND_URL. Set it to your Render backend URL and redeploy.");
+      return;
+    }
     const backendUrl = configuredBackend || `${protocol}://${window.location.hostname}:8000`;
-    const socketUrl = backendUrl.replace(/^http/, protocol);
+    const socketUrl = backendUrl.replace(/\/$/, "").replace(/^http:/, "ws:").replace(/^https:/, "wss:");
     const socket = new WebSocket(`${socketUrl}/ws/${encodeURIComponent(cleanRoom)}`);
     socketRef.current = socket;
+    joinTimeoutRef.current = window.setTimeout(() => {
+      if (socket.readyState !== WebSocket.OPEN || !joined) {
+        socket.close();
+        setConnectionState("offline");
+        setError("The game server took too long to respond. Check the backend URL and try again.");
+      }
+    }, 12000);
     socket.onopen = () => {
       setConnectionState("online");
-      setJoined(true);
       socket.send(JSON.stringify({ action: "join", player: cleanName }));
     };
     socket.onmessage = (event) => {
@@ -137,18 +152,34 @@ function GameBoard() {
         return;
       }
       if (payload.type === "state" && payload.state) {
+        const joinedPlayer = payload.state.players.some((player) => player.name === cleanName);
         setServerState(payload.state);
         setPlayers(payload.state.players.map((player, index) => ({ ...player, color: colors[index % colors.length] })));
+        if (joinedPlayer) {
+          window.clearTimeout(joinTimeoutRef.current);
+          setJoined(true);
+        }
       }
     };
-    socket.onclose = () => setConnectionState("offline");
-    socket.onerror = () => setError("Could not connect to the game server.");
+    socket.onclose = () => {
+      window.clearTimeout(joinTimeoutRef.current);
+      setConnectionState("offline");
+      setJoined(false);
+    };
+    socket.onerror = () => {
+      setConnectionState("offline");
+      setError(`Could not connect to ${socketUrl}. Check VITE_BACKEND_URL and the Render backend.`);
+    };
   };
 
-  useEffect(() => () => socketRef.current?.close(), []);
+  useEffect(() => () => {
+    window.clearTimeout(joinTimeoutRef.current);
+    socketRef.current?.close();
+  }, []);
 
   const resetGame = () => {
     socketRef.current?.close();
+    window.clearTimeout(joinTimeoutRef.current);
     setJoined(false);
     setPlayers([]);
     setServerState(null);
@@ -156,7 +187,7 @@ function GameBoard() {
   };
 
   if (!joined) {
-    return <main className="lobby-shell"><section className="lobby-card"><p className="eyebrow">ONLINE TABLE · UP TO 6 PLAYERS</p><h1>Monopoly <span>After Hours</span></h1><p className="lobby-copy">Open this page in multiple browser tabs, use the same room code, and take the city together.</p><form onSubmit={joinRoom} className="lobby-form"><label>Room code<input value={roomId} onChange={(event) => setRoomId(event.target.value)} placeholder="friday-night" autoComplete="off" /></label><label>Your name<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} placeholder="Alex" autoComplete="nickname" /></label><button className="primary-button" type="submit">Join table</button></form>{error && <p className="connection-error">{error}</p>}<p className="server-hint">Server: {connectionState === "online" ? "online" : "start FastAPI on port 8000"}</p></section></main>;
+    return <main className="lobby-shell"><section className="lobby-card"><p className="eyebrow">ONLINE TABLE · UP TO 6 PLAYERS</p><h1>Monopoly <span>After Hours</span></h1><p className="lobby-copy">Open this page in multiple browser tabs, use the same room code, and take the city together.</p><form onSubmit={joinRoom} className="lobby-form"><label>Room code<input value={roomId} onChange={(event) => setRoomId(event.target.value)} placeholder="friday-night" autoComplete="off" disabled={connectionState === "connecting"} /></label><label>Your name<input value={playerName} onChange={(event) => setPlayerName(event.target.value)} placeholder="Alex" autoComplete="nickname" disabled={connectionState === "connecting"} /></label><button className="primary-button" type="submit" disabled={connectionState === "connecting"}>{connectionState === "connecting" ? "Connecting..." : "Join table"}</button></form>{error && <p className="connection-error">{error}</p>}<p className="server-hint">{connectionState === "connecting" ? "Waking the game server..." : connectionState === "online" ? "Connected, waiting for room confirmation..." : "Enter a room code to play online."}</p></section></main>;
   }
 
   const dice = serverState?.dice || [1, 1];
