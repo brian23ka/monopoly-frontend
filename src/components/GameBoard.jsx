@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Dice from "./Dice";
 
 const squares = [
   // Bottom row (left to right)
@@ -63,6 +64,30 @@ const communityIndices = squares
   .map((sq, idx) => sq === "Community Chest" ? idx : null)
   .filter(idx => idx !== null);
 
+const properties = {
+  "Mediterranean Ave": { price: 60, rent: 10 }, "Baltic Ave": { price: 60, rent: 12 },
+  "Reading RR": { price: 200, rent: 25 }, "Oriental Ave": { price: 100, rent: 18 },
+  "Vermont Ave": { price: 100, rent: 20 }, "Connecticut Ave": { price: 120, rent: 24 },
+  "St. Charles Place": { price: 140, rent: 26 }, "Electric Company": { price: 150, rent: 28 },
+  "States Ave": { price: 140, rent: 26 }, "Virginia Ave": { price: 160, rent: 30 },
+  "Pennsylvania RR": { price: 200, rent: 25 }, "St. James Place": { price: 180, rent: 34 },
+  "Tennessee Ave": { price: 180, rent: 36 }, "New York Ave": { price: 200, rent: 40 },
+  "B&O RR": { price: 200, rent: 25 }, "Kentucky Ave": { price: 220, rent: 44 },
+  "Indiana Ave": { price: 220, rent: 46 }, "Illinois Ave": { price: 240, rent: 50 },
+  "Atlantic Ave": { price: 260, rent: 52 }, "Ventnor Ave": { price: 260, rent: 54 },
+  "Water Works": { price: 150, rent: 28 }, "Marvin Gardens": { price: 280, rent: 58 },
+  "Pacific Ave": { price: 300, rent: 62 }, "North Carolina Ave": { price: 300, rent: 64 },
+  "Pennsylvania Ave": { price: 320, rent: 68 }, "Short Line RR": { price: 200, rent: 25 },
+  "Park Place": { price: 350, rent: 70 }, "Boardwalk": { price: 400, rent: 80 }
+};
+
+const cardDeck = [
+  { type: "Chance", text: "Bank error in your favor. Collect $100.", amount: 100 },
+  { type: "Chance", text: "Advance to GO. Collect $200.", move: 0 },
+  { type: "Community Chest", text: "You inherit $150.", amount: 150 },
+  { type: "Community Chest", text: "Pay school fees of $50.", amount: -50 }
+];
+
 function getSquarePosition(idx) {
   if (idx < 11) return { gridColumn: idx + 1, gridRow: 11 };
   if (idx < 20) return { gridColumn: 11, gridRow: 21 - idx };
@@ -71,66 +96,117 @@ function getSquarePosition(idx) {
 }
 
 function GameBoard() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [ws, setWs] = useState(null);
-  const [drawnCard, setDrawnCard] = useState("");
+  const [players, setPlayers] = useState([
+    { name: "You", money: 1500, position: 0, color: "#e4572e", properties: [] },
+    { name: "Cleo", money: 1500, position: 0, color: "#167c80", properties: [] }
+  ]);
+  const [currentPlayer, setCurrentPlayer] = useState(0);
+  const [dice, setDice] = useState([1, 1]);
+  const [rolling, setRolling] = useState(false);
+  const [rolledThisTurn, setRolledThisTurn] = useState(false);
+  const [message, setMessage] = useState("Roll the dice to start your turn.");
+  const [pendingPurchase, setPendingPurchase] = useState(null);
+  const [drawnCard, setDrawnCard] = useState(null);
+  const [gameOver, setGameOver] = useState(false);
+
+  const activePlayer = players[currentPlayer];
+  const currentSquare = squares[activePlayer.position];
+  const ownedBy = (square) => players.findIndex((player) => player.properties.includes(square));
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8000/ws/test-room");
-    socket.onmessage = (event) => {
-      setMessages((prev) => [...prev, event.data]);
-    };
-    setWs(socket);
-    return () => socket.close();
-  }, []);
-
-  const sendMessage = () => {
-    if (ws && input) {
-      ws.send(input);
-      setInput("");
+    if (players.some((player) => player.money < 0)) {
+      setGameOver(true);
+      setMessage(`${players.find((player) => player.money < 0)?.name} went bankrupt. ${players.find((player) => player.money >= 0)?.name} wins!`);
     }
+  }, [players]);
+
+  const finishTurn = () => {
+    setCurrentPlayer((player) => (player + 1) % players.length);
+    setRolledThisTurn(false);
+    setPendingPurchase(null);
+    setDrawnCard(null);
+    setMessage(`${currentPlayer === 0 ? "Cleo" : "You"}'s turn. Roll when you're ready.`);
   };
 
-  // Dummy card draw logic
-  const chanceCards = [
-    "Advance to Go", "Bank pays you dividend", "Go to Jail", "Pay poor tax"
-  ];
-  const communityCards = [
-    "Doctor's fees", "From sale of stock you get $50", "Get out of Jail Free", "Go to Jail"
-  ];
-
-  const drawChance = () => {
-    const card = chanceCards[Math.floor(Math.random() * chanceCards.length)];
-    setDrawnCard(`Chance: ${card}`);
+  const resolveLanding = (position) => {
+    const square = squares[position];
+    if (position < activePlayer.position && position !== 0) {
+      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money + 200 } : player));
+      setMessage(`${activePlayer.name} passed GO and collected $200.`);
+    }
+    if (square === "Go To Jail") {
+      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, position: 10 } : player));
+      setMessage(`${activePlayer.name} was sent to jail.`);
+      return;
+    }
+    if (square === "Income Tax" || square === "Luxury Tax") {
+      const tax = square === "Income Tax" ? 200 : 100;
+      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money - tax } : player));
+      setMessage(`${activePlayer.name} paid $${tax} ${square.toLowerCase()}.`);
+      return;
+    }
+    if (chanceIndices.includes(position) || communityIndices.includes(position)) {
+      const card = cardDeck[Math.floor(Math.random() * cardDeck.length)];
+      setDrawnCard(card);
+      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money + (card.amount || 0), position: card.move === 0 ? 0 : player.position } : player));
+      setMessage(`${activePlayer.name} drew a card.`);
+      return;
+    }
+    if (properties[square] && ownedBy(square) === -1) {
+      setPendingPurchase(square);
+      setMessage(`${square} is available for $${properties[square].price}.`);
+      return;
+    }
+    if (properties[square] && ownedBy(square) !== currentPlayer) {
+      const owner = ownedBy(square);
+      const rent = properties[square].rent;
+      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money - rent } : index === owner ? { ...player, money: player.money + rent } : player));
+      setMessage(`${activePlayer.name} paid $${rent} rent to ${players[owner].name}.`);
+      return;
+    }
+    setMessage(`${activePlayer.name} landed on ${square}.`);
   };
 
-  const drawCommunity = () => {
-    const card = communityCards[Math.floor(Math.random() * communityCards.length)];
-    setDrawnCard(`Community Chest: ${card}`);
+  const rollDice = () => {
+    if (rolling || rolledThisTurn || gameOver || pendingPurchase) return;
+    setRolledThisTurn(true);
+    setRolling(true);
+    window.setTimeout(() => {
+      const nextDice = [Math.ceil(Math.random() * 6), Math.ceil(Math.random() * 6)];
+      const nextPosition = (activePlayer.position + nextDice[0] + nextDice[1]) % squares.length;
+      setDice(nextDice);
+      setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, position: nextPosition } : player));
+      setRolling(false);
+      resolveLanding(nextPosition);
+    }, 650);
   };
+
+  const buyProperty = () => {
+    const property = properties[pendingPurchase];
+    if (!property || activePlayer.money < property.price) return;
+    setPlayers((current) => current.map((player, index) => index === currentPlayer ? { ...player, money: player.money - property.price, properties: [...player.properties, pendingPurchase] } : player));
+    setMessage(`${activePlayer.name} bought ${pendingPurchase}.`);
+    setPendingPurchase(null);
+  };
+
+  const resetGame = () => window.location.reload();
 
   return (
-    <div>
-      <h2>Game Board</h2>
-      <div>
-        {messages.map((msg, idx) => (
-          <div key={idx}>{msg}</div>
-        ))}
-      </div>
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Send a message"
-      />
-      <button onClick={sendMessage}>Send</button>
-      <div className="board-container">
+    <main className="game-shell">
+      <header className="topbar"><div><p className="eyebrow">PASS & PLAY · 2 PLAYERS</p><h1>Monopoly <span>After Hours</span></h1></div><button className="quiet-button" onClick={resetGame}>New game</button></header>
+      <section className="game-layout">
+        <aside className="side-panel left-panel"><div className="panel-heading"><span>Players</span><span className="turn-chip">Turn {currentPlayer + 1}</span></div>
+          {players.map((player, index) => <div className={`player-card ${currentPlayer === index ? "active-player" : ""}`} key={player.name}><span className="player-token" style={{ background: player.color }}>{index + 1}</span><div><strong>{player.name}</strong><small>{player.properties.length} properties</small></div><b>${player.money}</b></div>)}
+          <div className="objective"><span>WIN CONDITION</span><strong>Bankrupt your rival</strong><p>Buy streets, charge rent, and be the last player standing.</p></div>
+        </aside>
+        <div className="board-container">
         <div className="monopoly-board" style={{ position: "relative" }}>
           {squares.map((square, idx) => {
             let badge = null;
             if (chanceIndices.includes(idx)) {
               badge = (
                 <span
+                  className="cell-badge chance-badge"
                   style={{
                     background: "#ff9800",
                     color: "#fff",
@@ -147,6 +223,7 @@ function GameBoard() {
             if (communityIndices.includes(idx)) {
               badge = (
                 <span
+                  className="cell-badge chest-badge"
                   style={{
                     background: "#2196f3",
                     color: "#fff",
@@ -163,11 +240,9 @@ function GameBoard() {
             return (
               <div
                 key={idx}
-                className="board-square"
+                className={`board-square ${activePlayer.position === idx ? "current-square" : ""} ${properties[square] ? "property-cell" : ""} ${["Chance", "Community Chest"].includes(square) ? "card-cell" : ""} ${square.includes("RR") ? "railroad-cell" : ""} ${["Electric Company", "Water Works"].includes(square) ? "utility-cell" : ""} ${["GO", "Jail", "Free Parking", "Go To Jail"].includes(square) ? "corner-cell" : ""}`}
                 style={{
                   position: "absolute",
-                  width: "60px",
-                  height: "60px",
                   ...getSquarePosition(idx),
                   background: colorMap[square] || "#fff",
                   color: ["GO", "Jail", "Free Parking", "Go To Jail"].includes(square) ? "#fff" : "#222",
@@ -175,28 +250,27 @@ function GameBoard() {
                   border: "2px solid #333"
                 }}
               >
-                {square} {badge}
+                <span className="square-name">{square}</span> {badge}
+                {players.map((player, playerIndex) => player.position === idx && <span className="board-token" key={player.name} style={{ background: player.color, transform: `translateX(${playerIndex * 13}px)` }}>{playerIndex + 1}</span>)}
+                {ownedBy(square) !== -1 && <span className="owner-mark" style={{ background: players[ownedBy(square)].color }} />}
               </div>
             );
           })}
-          {/* Center area for card draw */}
           <div className="monopoly-center">
-            <div className="monopoly-title">Monopoly</div>
-            <button onClick={drawChance}>
-              Draw Chance Card
-            </button>
-            <button onClick={drawCommunity}>
-              Draw Community Chest Card
-            </button>
-            {drawnCard && (
-              <div className="drawn-card">
-                {drawnCard}
-              </div>
-            )}
+            <p className="center-kicker">THE CITY IS YOURS</p><div className="monopoly-title">MONOPOLY</div><div className="center-divider" /><p className="center-status">{message}</p>
+            {drawnCard && <div className="drawn-card"><span>{drawnCard.type}</span>{drawnCard.text}</div>}
           </div>
         </div>
-      </div>
-    </div>
+        </div>
+        <aside className="side-panel right-panel"><div className="panel-heading"><span>{activePlayer.name}'s move</span><span className="location-dot" /></div>
+          <div className="location-card"><small>YOU ARE HERE</small><strong>{currentSquare}</strong><span>{properties[currentSquare] ? `$${properties[currentSquare].price} · $${properties[currentSquare].rent} rent` : "Action space"}</span></div>
+          <Dice dice={dice} rolling={rolling} onRoll={rollDice} disabled={gameOver || rolledThisTurn || Boolean(pendingPurchase)} />
+          {pendingPurchase && <div className="purchase-card"><small>AVAILABLE TO BUY</small><strong>{pendingPurchase}</strong><span>${properties[pendingPurchase].price}</span><button className="primary-button" onClick={buyProperty} disabled={activePlayer.money < properties[pendingPurchase].price}>Buy property</button><button className="text-button" onClick={finishTurn}>Pass</button></div>}
+          {!pendingPurchase && !gameOver && <button className="text-button end-turn" onClick={finishTurn}>End turn</button>}
+          {gameOver && <div className="game-over"><span>GAME OVER</span><strong>{message}</strong><button className="primary-button" onClick={resetGame}>Play again</button></div>}
+        </aside>
+      </section>
+    </main>
   );
 }
 

@@ -1,175 +1,33 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
-  min-width: 320px;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.App {
-  text-align: center;
-  font-family: Arial, sans-serif;
-  margin-top: 0;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
-.board-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-}
-
-.monopoly-board {
-  display: grid;
-  grid-template-columns: repeat(11, 60px);
-  grid-template-rows: repeat(11, 60px);
-  background: #2e2e2e;
-  border: 6px solid #333;
-  border-radius: 24px;
-  box-shadow: 0 8px 32px rgba(44, 62, 80, 0.18);
-  width: 660px;
-  height: 660px;
-  position: relative;
-}
-
-.board-square {
-  background: #fff;
-  border: 2px solid #bbb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  text-align: center;
-  padding: 4px;
-  box-sizing: border-box;
-  min-height: 60px;
-  min-width: 60px;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
-  transition: transform 0.1s;
-}
-.board-square:hover {
-  transform: scale(1.08);
-  z-index: 2;
-}
-
-.monopoly-center {
-  position: absolute;
-  left: 70px;
-  top: 70px;
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, #fff 70%, #e3e3e3 100%);
-  border-radius: 16px;
-  border: 2px solid #ddd;
-  box-shadow: 0 4px 24px rgba(44, 62, 80, 0.12);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  color: #333;
-  pointer-events: auto;
-  gap: 16px;
-}
-
-.monopoly-title {
-  font-family: 'Luckiest Guy', cursive, Arial, sans-serif;
-  font-size: 3rem;
-  color: #e53935;
-  letter-spacing: 2px;
-  margin-bottom: 12px;
-  text-shadow: 2px 2px 0 #fff, 4px 4px 8px #3333;
-}
-
-.monopoly-center button {
-  font-size: 1rem;
-  margin: 4px 0;
-  padding: 0.6em 1.2em;
-  border-radius: 8px;
-  border: none;
-  background: #2196f3;
-  color: #fff;
-  font-weight: bold;
-  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.monopoly-center button:hover {
-  background: #1769aa;
-}
-
-.monopoly-center .drawn-card {
-  font-size: 1.2rem;
-  margin-top: 8px;
-  color: #444;
-  background: #fffbe6;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid #ffe082;
-  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
-}
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root { font-family: 'Space Grotesk', sans-serif; color: #252321; background: #efe6d6; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at 10% 0%, #f8f1e5 0, transparent 35%), #efe6d6; }
+button { font: inherit; cursor: pointer; } button:disabled { cursor: not-allowed; opacity: .5; }
+.game-shell { max-width: 1500px; margin: 0 auto; padding: 34px 42px 48px; }
+.topbar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; }
+.eyebrow, .panel-heading, .location-card small, .purchase-card small, .objective span, .game-over span { font: 500 11px 'DM Mono', monospace; letter-spacing: .12em; text-transform: uppercase; color: #867b6c; }
+h1 { margin: 5px 0 0; font-size: clamp(2.2rem, 4vw, 4.4rem); line-height: .95; letter-spacing: -.07em; font-weight: 700; } h1 span { color: #c85b38; }
+.quiet-button, .text-button { border: 0; background: transparent; color: #655d52; padding: 10px 0; border-bottom: 1px solid #aaa08f; }
+.game-layout { display: grid; grid-template-columns: 190px minmax(520px, 700px) 220px; align-items: center; justify-content: center; gap: 30px; }
+.side-panel { align-self: stretch; display: flex; flex-direction: column; gap: 18px; padding-top: 10px; } .panel-heading { display: flex; justify-content: space-between; align-items: center; color: #4e473e; }
+.turn-chip { background: #e2d7c5; padding: 5px 7px; border-radius: 2px; color: #827361; }
+.player-card { display: grid; grid-template-columns: 30px 1fr auto; gap: 9px; align-items: center; padding: 12px 8px; border-left: 2px solid transparent; transition: transform .25s, background .25s; } .active-player { background: rgba(255,255,255,.5); border-left-color: #c85b38; transform: translateX(4px); }
+.player-token, .board-token { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; color: white; font: 500 12px 'DM Mono', monospace; box-shadow: 0 2px 4px #0003; }
+.player-card strong, .player-card b { font-size: 14px; } .player-card small { display: block; margin-top: 3px; color: #948878; font-size: 11px; } .player-card b { font-family: 'DM Mono', monospace; font-weight: 500; }
+.objective { margin-top: auto; border-top: 1px solid #d1c5b2; padding-top: 18px; } .objective strong { display: block; margin: 9px 0 6px; font-size: 15px; } .objective p { margin: 0; color: #83786a; font-size: 12px; line-height: 1.5; }
+.board-container { display: flex; justify-content: center; } .monopoly-board { display: grid; grid-template-columns: repeat(11, 1fr); grid-template-rows: repeat(11, 1fr); width: min(68vw, 700px); aspect-ratio: 1; padding: 5px; gap: 3px; background: #173f3b; border: 5px solid #102d2b; border-radius: 16px; box-shadow: 0 18px 35px #23423c45, inset 0 0 0 2px #3c7669; position: relative; overflow: hidden; }
+.board-square { position: relative !important; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; min-height: 0; width: auto !important; height: auto !important; border: 1px solid #173f3b !important; border-radius: 3px; padding: 10px 5px 5px; color: #252321 !important; text-align: center; font-size: clamp(7px, .7vw, 11px); line-height: 1.15; transition: box-shadow .2s, filter .2s; overflow: hidden; isolation: isolate; } .board-square:hover { filter: brightness(1.04); z-index: 3; } .square-name, .square-badge { visibility: visible; z-index: 1; } .square-name { font-weight: 600; text-transform: uppercase; letter-spacing: .015em; } .current-square { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px #e45d3f; z-index: 2; }
+.property-cell::before, .railroad-cell::before, .utility-cell::before { content: ""; position: absolute; inset: 0 0 auto; height: 7px; background: #173f3b; z-index: 0; }
+.railroad-cell::before { height: 100%; width: 6px; inset: 0 auto 0 0; background: #27343a; } .railroad-cell::after { content: "RR"; position: absolute; right: 4px; top: 4px; color: #27343a; font: 500 7px 'DM Mono', monospace; z-index: 0; }
+.utility-cell::before { background: #2b98a0; } .utility-cell::after { content: "UTIL"; position: absolute; right: 4px; top: 4px; color: #176b70; font: 500 6px 'DM Mono', monospace; z-index: 0; }
+.card-cell { background-image: linear-gradient(135deg, #ffffff18 25%, transparent 25%, transparent 50%, #ffffff18 50%, #ffffff18 75%, transparent 75%) !important; background-size: 10px 10px; } .cell-badge { display: grid; place-items: center; width: 22px; height: 22px; margin: 4px 0; border-radius: 50% !important; background: #f4e3bd !important; color: #173f3b !important; border: 1px solid #173f3b; font: 600 12px 'DM Mono', monospace; }
+.corner-cell { border-radius: 6px; font-weight: 700; } .corner-cell::before { content: ""; position: absolute; inset: 6px; border: 1px solid #173f3b66; border-radius: 4px; z-index: 0; } .corner-cell .square-name { letter-spacing: .04em; }
+.board-token { position: absolute; bottom: 5px; left: 50%; width: clamp(18px, 2.2vw, 27px); height: clamp(18px, 2.2vw, 27px); font-size: 10px; border: 2px solid #fff; animation: token-pop .35s ease-out; z-index: 4; } .owner-mark { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; border: 1px solid #fff; opacity: .85; }
+.monopoly-center { position: absolute; inset: 10%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15%; background: #f1e7cf; border: 4px solid #e45d3f; border-radius: 50%; color: #173f3b; text-align: center; pointer-events: none; transform: rotate(-4deg); box-shadow: 0 7px 0 #c8ad8d; } .center-kicker { visibility: visible; margin: 0 0 8px; font: 500 9px 'DM Mono', monospace; letter-spacing: .13em; color: #57766a; } .monopoly-title { visibility: visible; font-size: clamp(1.4rem, 4vw, 3.8rem); line-height: .9; letter-spacing: -.09em; color: #e45d3f; font-weight: 700; text-shadow: 2px 2px #fff; } .center-divider { display: block; width: 36px; height: 2px; margin: 16px 0 11px; background: #e45d3f; } .center-status { margin: 0; max-width: 210px; padding: 5px 8px; background: #f1e7cf; border: 0; font-size: clamp(9px, 1vw, 12px); line-height: 1.3; color: #31594e; }
+.drawn-card { margin-top: 14px; padding: 9px 10px; background: #fffaf0; border: 1px solid #dbcdb8; font-size: 10px; line-height: 1.3; animation: card-in .4s ease-out; } .drawn-card span { display: block; margin-bottom: 4px; color: #c85b38; font: 500 9px 'DM Mono', monospace; text-transform: uppercase; }
+.location-card, .purchase-card, .game-over { padding: 16px; background: rgba(255,255,255,.45); border: 1px solid #dfd3c1; } .location-card strong, .purchase-card strong, .game-over strong { display: block; margin: 8px 0 5px; font-size: 18px; } .location-card span, .purchase-card span { color: #887c6c; font: 11px 'DM Mono', monospace; }
+.dice-panel { padding: 17px 0; border-top: 1px solid #d1c5b2; border-bottom: 1px solid #d1c5b2; } .dice-label { color: #867b6c; font: 500 11px 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .1em; } .dice-display { display: flex; gap: 8px; margin: 9px 0 14px; perspective: 500px; } .die { display: inline-block; font-size: 48px; line-height: 1; color: #303633; transform-origin: center; text-shadow: 0 4px 0 #c9beac; } .is-rolling .die-one { animation: dice-shake-one .65s ease-in-out infinite; } .is-rolling .die-two { animation: dice-shake-two .65s ease-in-out .08s infinite; } .roll-button:not(:disabled) { animation: button-breathe 2.2s ease-in-out infinite; }
+.primary-button { width: 100%; border: 0; padding: 11px 12px; background: #c85b38; color: white; font-weight: 600; transition: background .2s, transform .2s; } .primary-button:hover:not(:disabled) { background: #a9492c; transform: translateY(-2px); } .purchase-card, .game-over { animation: card-in .35s ease-out; } .purchase-card strong { font-size: 14px; } .purchase-card .primary-button { margin-top: 15px; } .purchase-card .text-button { display: block; margin: 7px auto 0; font-size: 12px; } .end-turn { align-self: flex-start; font-size: 12px; } .game-over { margin-top: auto; border-color: #c85b38; } .game-over strong { font-size: 14px; line-height: 1.3; } .game-over .primary-button { margin-top: 12px; }
+@keyframes dice-shake-one { 0%, 100% { transform: translateY(0) rotate(-8deg) scale(1); } 25% { transform: translateY(-9px) rotate(18deg) scale(1.12); } 55% { transform: translateY(2px) rotate(-24deg) scale(.94); } 80% { transform: translateY(-5px) rotate(8deg) scale(1.08); } } @keyframes dice-shake-two { 0%, 100% { transform: translateY(0) rotate(8deg) scale(1); } 25% { transform: translateY(2px) rotate(-20deg) scale(.94); } 55% { transform: translateY(-10px) rotate(22deg) scale(1.14); } 80% { transform: translateY(-3px) rotate(-8deg) scale(1.04); } } @keyframes button-breathe { 0%, 100% { box-shadow: 0 0 0 0 #c85b3833; } 50% { box-shadow: 0 0 0 6px #c85b3800; } } @keyframes token-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; } } @keyframes card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1050px) { .game-shell { padding: 24px; } .game-layout { grid-template-columns: 160px minmax(480px, 1fr); } .right-panel { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: start; } .right-panel .panel-heading, .right-panel .location-card { grid-column: span 1; } .dice-panel { border-top: 0; } .purchase-card, .game-over { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .game-shell { padding: 20px 14px 30px; } .topbar { align-items: center; margin-bottom: 22px; } .game-layout { display: flex; flex-direction: column; gap: 20px; } .left-panel, .right-panel { width: 100%; } .left-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .left-panel .panel-heading, .objective { grid-column: 1 / -1; } .objective { margin-top: 8px; } .board-container { width: 100%; } .monopoly-board { width: min(94vw, 600px); border-width: 4px; box-shadow: 7px 10px 0 #d8cbb7, 0 15px 30px #67594536; } .right-panel { display: grid; grid-template-columns: 1fr 1fr; } .right-panel .panel-heading { grid-column: 1 / -1; } .location-card, .dice-panel { grid-column: span 1; } .dice-panel { padding: 0; } .die { font-size: 36px; } h1 { font-size: 2.1rem; } }

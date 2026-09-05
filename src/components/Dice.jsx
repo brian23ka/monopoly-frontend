@@ -1,30 +1,36 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 // Unicode dice faces: ⚀ ⚁ ⚂ ⚃ ⚄ ⚅
 const diceFaces = ["\u2680", "\u2681", "\u2682", "\u2683", "\u2684", "\u2685"];
 
-const Dice = () => {
-  const [dice, setDice] = useState([1, 1]);
-  const [rolling, setRolling] = useState(false);
+const Dice = ({ dice, rolling, onRoll, disabled }) => {
+  const [displayDice, setDisplayDice] = useState(dice);
 
-  const rollDice = () => {
-    setRolling(true);
-    setTimeout(() => {
-      const die1 = Math.floor(Math.random() * 6) + 1;
-      const die2 = Math.floor(Math.random() * 6) + 1;
-      setDice([die1, die2]);
-      setRolling(false);
-    }, 500);
-  };
+  useEffect(() => {
+    if (!rolling) {
+      setDisplayDice(dice);
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setDisplayDice([
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1
+      ]);
+    }, 90);
+
+    return () => window.clearInterval(interval);
+  }, [dice, rolling]);
 
   return (
-    <div>
-      <div style={{ fontSize: "4rem", margin: "1rem" }}>
-        <span>{diceFaces[dice[0] - 1]}</span>
-        <span style={{ marginLeft: "1rem" }}>{diceFaces[dice[1] - 1]}</span>
+    <div className={`dice-panel ${rolling ? "is-rolling" : ""}`}>
+      <div className="dice-label">Your roll</div>
+      <div className="dice-display" aria-live="polite" aria-label={`Dice show ${displayDice[0]} and ${displayDice[1]}`}>
+        <span className="die die-one">{diceFaces[displayDice[0] - 1]}</span>
+        <span className="die die-two">{diceFaces[displayDice[1] - 1]}</span>
       </div>
-      <button onClick={rollDice} disabled={rolling}>
-        {rolling ? "Rolling..." : "Roll Dice"}
+      <button className="primary-button roll-button" onClick={onRoll} disabled={disabled || rolling}>
+        {rolling ? "Rolling..." : "Roll dice"}
       </button>
     </div>
   );
