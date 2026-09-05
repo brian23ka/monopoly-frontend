@@ -148,6 +148,10 @@ function GameBoard() {
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data);
       if (payload.type === "error") {
+        window.clearTimeout(joinTimeoutRef.current);
+        socket.close();
+        setConnectionState("offline");
+        setJoined(false);
         setError(payload.message);
         return;
       }
